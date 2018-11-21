@@ -1,13 +1,12 @@
 import argparse
 import os
-import numpy as np
 
-import torch
-from torch.autograd import Variable
-import torch.utils.data
+import numpy as np
 import torch.nn as nn
-from utils import prepare_datasets, evaluate, save, load
+import torch.utils.data
+
 from models import ConvNet, MyModel
+from utils import prepare_datasets, evaluate, save, load
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -39,17 +38,15 @@ np.random.seed(0)
 if args.cuda:
     torch.cuda.manual_seed(0)
 
-############# fetch torch Datasets ###################
-######### you may change the dataset split % #########
+# fetch torch Datasets
 train_set, val_set, test_set = prepare_datasets(splits=[0.7, 0.15, 0.15])
 
-############# create torch DataLoaders ###############
-########### you may change the batch size ############
+# create torch DataLoaders
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
 val_loader = torch.utils.data.DataLoader(val_set, batch_size=1000)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=1000)
 
-################ initialize the model ################
+# initialize the model
 if args.model == 'convnet':
     model = ConvNet()
 elif args.model == 'mymodel':
@@ -60,41 +57,32 @@ else:
 if args.cuda:
     model.cuda()
 
-######## Define loss function and optimizer ##########
-############## Write your code here ##################
+# Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
 
-######################################################
-
-
 def train(epoch):
-    """ Runs training for 1 epoch
-    epoch: int, denotes the epoch number for printing
     """
-    ############# Write train function ###############
+    Runs training for specified number of epochs
+    :param epoch: denotes the epoch number for printing
+    :type epoch: int
+    """
     mean_training_loss = 0.0
     model.train()
     for i, batch in enumerate(train_loader):
-        ############ Write your code here ############
         inputs, labels = batch
-
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
         mean_training_loss += loss.item()
-
         mean_training_loss /= len(train_loader)
         print('Training Epoch: [{}][{}/{}]\t' 'Training Loss: {:.6f}'.format(epoch, i, len(train_loader) - 1, mean_training_loss))
-    ##################################################
 
 
-######## Training and evaluation loop ################
-######## Save model with best val accuracy  ##########
-
+# Save model with best val accuracy
 best_val_acc = 0.0
 best_model = {}
 for i in range(args.epochs):
@@ -103,26 +91,24 @@ for i in range(args.epochs):
     if val_acc > best_val_acc:
         best_val_acc = float(val_acc)
         best_model = model
-
     print('Validation Loss: {:.6f} \t'
           'Validation Acc.: {:.6f}'.format(val_loss, val_acc))
-    ####### write saving code here ###################
     save(best_model, args.save_dir + args.model + '.pt')
-
     print("best accuracy:", best_val_acc)
 
 
-############ write testing code here #################
 def test(model):
+    """
+    Evaluates the model
+    :param model: The model to be evaluated
+    """
     test_loss, test_acc = evaluate(test_loader, model, criterion, args.cuda)
     print('Test Loss: {:.6f} \t' 'Test Acc.: {:.6f}'.format(test_loss, test_acc))
 
 
-############# Load best model and test ###############
-############## Write your code here ##################
-if args.model == 'convnet':
-    test_model = ConvNet()
-elif args.model == 'mymodel':
+# Load best model and test
+test_model = ConvNet()
+if args.model == 'mymodel':
     test_model = MyModel()
 
 if args.cuda:
